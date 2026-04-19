@@ -3,37 +3,54 @@ import TextDisplayArea from './TextDisplayArea'
 import EditorPanel from './EditorPanel'
 import Toolbar from './Toolbar'
 
+/**
+ * פונקציית עזר לייצור אובייקט מסמך ראשוני.
+ * המסמך נוצר ללא כותרת (title ריק) כדי לאפשר למשתמש להגדיר שם ייחודי רק בעת השמירה הראשונה ל-LocalStorage.
+ */
 function createText(id) {
-  return { id, title: `טקסט ${id}`, content: [] }
+  return { id, title: '', content: [] }
 }
 
 export default function App() {
+  /* --- ניהול מצב (State) ונתונים --- */
+
+  // החזקת זהות המשתמש המחובר לצורך סנכרון וטעינת קבצים אישיים מהדפדפן
   const [currentUser, setCurrentUser] = useState(localStorage.getItem('logged_user') || '')
 
-  // פונקציה שטוענת את כל הקבצים השמורים של המשתמש מה-LocalStorage
+  /**
+   * שליפת מסמכים מה-Persistence Layer (LocalStorage).
+   * הפונקציה מבצעת סינון (Filter) של כל המפתחות בדפדפן לפי תחילית (Prefix) הייחודית למשתמש המחובר.
+   */
   const getAllUserFiles = () => {
     if (!currentUser) return [];
-    // מחפשים את כל המפתחות שמתחילים בקידומת של המשתמש הנוכחי
     const prefix = `file_${currentUser}_`;
     const keys = Object.keys(localStorage).filter(k => k.startsWith(prefix));
     
     if (keys.length > 0) {
-      // טוענים את התוכן של כל הקבצים שמצאנו
       return keys.map(k => JSON.parse(localStorage.getItem(k)));
     }
-    // אם אין שום קובץ שמור, מחזירים מערך ריק
     return [];
   };
 
+  // מערך הנתונים הראשי המכיל את כל המסמכים הפתוחים כרגע בזיכרון האפליקציה
   const [texts, setTexts] = useState(getAllUserFiles());
+  
+  // ניהול המזהה (ID) של המסמך הנמצא כרגע במוקד העריכה
   const [activeId, setActiveId] = useState(texts.length > 0 ? texts[0].id : null);
+  
+  // ניהול רציפות מזהים ייחודיים למניעת כפילויות בעת יצירת מסמכים חדשים
   const [nextId, setNextId] = useState(() => {
     if (texts.length === 0) return 1;
     return Math.max(...texts.map(t => t.id)) + 1;
   });
+  
+  // מחסנית (Stack) לניהול היסטוריית מצבים לצורך מימוש פונקציונליות Undo עד 20 צעדים אחורה
   const [history, setHistory] = useState([]);
 
-  // עדכון ה-ID הבא בכל פעם שהרשימה משתנה כדי למנוע כפילויות בעתיד
+  /**
+   * Side Effect לסנכרון מזהה ה-ID הבא בכל שינוי במערך המסמכים.
+   * מבטיח תקינות לוגית של ה-Key-Property ברשימות.
+   */
   useEffect(() => {
     if (texts.length > 0) {
       const maxId = Math.max(...texts.map(t => t.id));
@@ -41,33 +58,44 @@ export default function App() {
     }
   }, [texts]);
 
-  function handleLogin() {
+  /* --- פונקציות ניהול משתמש וסשן --- */
+
+  const handleLogin = () => {
     const name = prompt('הכנס שם משתמש:');
     if (name) {
       setCurrentUser(name);
       localStorage.setItem('logged_user', name);
-      // טעינה מחדש כדי לאתחל את ה-State עם הקבצים של המשתמש החדש
-      window.location.reload(); 
+      window.location.reload(); // איתחול האפליקציה לצורך טעינת קבצי המשתמש החדש
     }
   }
 
-  function handleLogout() {
+  const handleLogout = () => {
     localStorage.removeItem('logged_user');
     setCurrentUser('');
     window.location.reload();
   }
 
+  /* --- לוגיקת עריכה וניהול תוכן (Business Logic) --- */
+
+  /**
+   * שמירת "צילום מצב" (Snapshot) של המערכת לפני ביצוע שינויים.
+   * משתמש בשיבוט עמוק (Deep Copy) כדי למנוע שינויים רפרנציאליים לא רצויים ב-State.
+   */
   const saveToHistory = () => {
     setHistory(prev => [...prev, JSON.parse(JSON.stringify(texts))].slice(-20))
   }
 
-  function undo() {
+  const undo = () => {
     if (history.length === 0) return
     const prevState = history[history.length - 1]
     setTexts(prevState)
     setHistory(prev => prev.slice(0, -1))
   }
 
+  /**
+   * הוספת מסמך חדש למערכת.
+   * מימוש עקרון ה-Immutability ע"י יצירת מערך חדש (Spread Operator) ללא מוטציה של המקור.
+   */
   function addText() {
     saveToHistory()
     const newT = createText(nextId)
@@ -76,6 +104,9 @@ export default function App() {
     setNextId(n => n + 1)
   }
 
+  /**
+   * הסרת מסמך מהתצוגה הפעילה וניהול אוטומטי של בחירת המסמך הפעיל הבא.
+   */
   function removeText(id) {
     saveToHistory()
     const remaining = texts.filter(t => t.id !== id)
@@ -87,6 +118,10 @@ export default function App() {
     }
   }
 
+  /**
+   * הזרקת תו חדש למערך התוכן של המסמך הפעיל.
+   * הפונקציה מעדכנת את ה-State בצורה פונקציונלית ע"י שימוש ב-map לייצור עותק מעודכן.
+   */
   function addChar(char, style) {
     if (!activeId) return;
     saveToHistory()
@@ -97,6 +132,7 @@ export default function App() {
     ))
   }
 
+  // מחיקת התו האחרון מהמסמך הנבחר
   function deleteChar() {
     if (!activeId) return;
     saveToHistory()
@@ -107,6 +143,7 @@ export default function App() {
     ))
   }
 
+  // מחיקת המילה האחרונה ע"י חישוב אינדקס הרווח האחרון בתוכן
   function deleteWord() {
     if (!activeId) return;
     saveToHistory()
@@ -118,6 +155,7 @@ export default function App() {
     }))
   }
 
+  // עדכון גורף של עיצוב (Style) לכל התווים הקיימים במסמך הפעיל
   function applyStyleToAll(style) {
     if (!activeId) return;
     saveToHistory()
@@ -128,6 +166,7 @@ export default function App() {
     ))
   }
 
+  // איפוס תוכן המסמך הפעיל ללא מחיקת המסמך עצמו
   function clearText() {
     if (!activeId) return;
     saveToHistory()
@@ -136,10 +175,12 @@ export default function App() {
     ))
   }
 
-  // מסך התחברות
+  /* --- רינדור (Rendering) --- */
+
+  // הגנה: רינדור מותנה (Conditional Rendering) למניעת גישה ללא הזדהות
   if (!currentUser) {
     return (
-      <div className="login-screen" style={{ textAlign: 'center', marginTop: '100px' }}>
+      <div className="login-screen">
         <h2>ברוכים הבאים לעורך הטקסטים</h2>
         <button className="action-btn" onClick={handleLogin}>התחברות / הרשמה</button>
       </div>
@@ -148,6 +189,7 @@ export default function App() {
 
   return (
     <div className="app">
+      {/* סרגל כלים עליון: מקבל פונקציות עדכון (Callbacks) כ-Props (Lifting State Up) */}
       <Toolbar 
         onNew={addText} 
         texts={texts} 
@@ -155,16 +197,18 @@ export default function App() {
         setTexts={setTexts} 
         currentUser={currentUser} 
         onLogout={handleLogout}
+        onRemove={removeText} 
       />
       
       <div style={{padding: '5px', background: '#eee', fontSize: '12px', textAlign: 'center'}}>
         משתמש מחובר: <b>{currentUser}</b>
       </div>
 
-      {/* אם אין טקסטים פתוחים, מציגים הודעה מכוונת */}
+      {/* אזור התצוגה המרכזי: מטפל בהצגת כרטיסיות הטקסט או במצב ריק (Empty State) */}
       {texts.length === 0 ? (
-        <div className="empty-state" style={{ textAlign: 'center', marginTop: '100px', color: '#666' }}>
+        <div className="empty-state">
           <h3>אין קבצים פתוחים כרגע</h3>
+          <p>לחצי על כפתור <b>"פתח"</b> למעלה כדי לפתוח קובץ קיים </p>
           <p>לחצי על כפתור <b>"+ חדש"</b> למעלה כדי להתחיל לעבוד</p>
         </div>
       ) : (
@@ -176,6 +220,7 @@ export default function App() {
         />
       )}
 
+      {/* פאנל עריכה תחתון: מרכז את כלי העיצוב והמקלדת הוויזואלית */}
       <EditorPanel 
         onAddChar={addChar} 
         onDelete={deleteChar} 

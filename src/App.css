@@ -1,4 +1,4 @@
-/* App.css - גרסה סופית, מעוצבת ואחידה */
+/* App.css - גרסה סופית, יציבה ומותאמת להגנה */
 
 :root {
   --primary: #4a90e2;
@@ -13,203 +13,159 @@
   --transition: all 0.3s ease;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* { 
+  box-sizing: border-box; 
+  margin: 0; 
+  padding: 0; 
+}
 
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background: var(--bg-light);
   direction: rtl;
   color: var(--text-main);
-  overflow: hidden;
+  overflow: hidden; 
 }
 
 .app {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100vh; /* מבטיח שהאפליקציה תמיד תתפוס את כל גובה המסך */
 }
 
-/* 1. ה-Toolbar העליון - כפתורים מעוגלים ויפים */
+/* 1. ה-Toolbar העליון */
 .toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 12px 24px;
-  background: var(--bg-dark);
-  color: white;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-  z-index: 10;
+  padding: 10px 20px;
+  background: #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  border-bottom: 1px solid #eee;
+  z-index: 100;
+  gap: 15px;
 }
 
-.app-title { font-size: 1.2rem; font-weight: 600; }
-
-.toolbar-actions { display: flex; gap: 12px; }
-
-/* הגדרת כפתור אחידה ל-Toolbar */
-.toolbar-actions button {
+.tool-btn {
   padding: 8px 18px;
-  border: none;
-  border-radius: 20px; /* מעוגל כמו כפתור הלוגין */
-  background: rgba(255,255,255,0.1);
-  color: white;
+  background: white !important;
+  border: 1px solid #ddd;
+  border-radius: 20px;
   cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
+  font-weight: bold;
+  color: var(--primary);
   transition: var(--transition);
-  box-shadow: var(--btn-shadow);
-}
-
-.toolbar-actions button:hover {
-  background: rgba(255,255,255,0.2);
-  transform: translateY(-1px);
-}
-
-/* כפתור "יציאה" אדום מעוגל */
-.toolbar-actions button.danger {
-  background: var(--danger);
-}
-
-.toolbar-actions button.danger:hover {
-  background: var(--danger-dark);
-}
-
-/* Display area & Empty State */
-.display-area, .empty-state {
-  flex: 1;
   display: flex;
-  background: #eef2f7;
-  overflow-y: auto;
-  min-height: 0; 
+  align-items: center;
+  gap: 8px;
 }
 
-.display-area { flex-wrap: wrap; gap: 20px; padding: 25px; align-content: flex-start; }
+.tool-btn:hover {
+  background: #f0f7ff !important;
+  border-color: var(--primary);
+}
 
-.empty-state { flex-direction: column; justify-content: center; align-items: center; color: #7f8c8d; }
+.logout-btn {
+  margin-right: auto;
+  background: var(--danger) !important;
+  color: white !important;
+  border: none !important;
+}
 
-/* Text card - עיצוב כרטיס מודרני */
-.text-card {
-  background: white;
-  border: 1px solid rgba(0,0,0,0.05);
-  border-radius: 12px;
-  width: 280px;
-  min-height: 160px;
-  padding: 15px;
-  cursor: pointer;
-  transition: var(--transition);
-  box-shadow: var(--card-shadow);
+.logout-btn:hover {
+  background: var(--danger-dark) !important;
+}
+
+/* 2. אזור התצוגה והודעת "אין קבצים" */
+/* הוספת flex-grow מבטיחה שהאזור תמיד ידחוף את המקלדת למטה */
+.display-area, .empty-state {
+  flex-grow: 1; 
   display: flex;
   flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: #f1f3f6;
+  padding: 15px;
+  overflow-y: auto;
 }
 
-.text-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+/* במידה ויש קבצים, הם יסתדרו בשורות */
+.display-area {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  justify-content: flex-start;
+  gap: 15px;
 }
 
-.text-card.active { border: 2px solid var(--primary); background: #fff; }
+.empty-state h3 { color: #555; margin-bottom: 10px; }
+.empty-state p { color: #777; font-size: 14px; }
 
-/* 2. כפתור ה"x" לסגירה - פתרון ה"תקוע" */
+/* כרטיסיות טקסט */
+.text-card {
+  width: 280px;
+  height: 180px;
+  background: white;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  box-shadow: var(--card-shadow);
+  transition: var(--transition);
+  border: 2px solid transparent;
+  overflow: hidden;
+}
+
+.text-card.active {
+  border-color: var(--primary);
+}
+
 .card-header {
+  padding: 8px 12px;
+  background: #fcfcfc;
+  border-bottom: 1px solid #eee;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
-  border-bottom: 1px solid #f0f0f0;
-  padding-bottom: 8px;
 }
 
-.card-title { font-size: 14px; font-weight: 700; color: var(--bg-dark); }
-
-/* עיצוב כפתור ה-x לסגירה - עכשיו הוא מעוצב ואחיד */
-.close-btn {
-  background: #fdf2f2;
-  border: 1px solid #fab1a0; /* מסגרת עדינה */
-  color: var(--danger);
-  width: 24px;
-  height: 24px;
-  border-radius: 50%; /* כפתור עגול מושלם */
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: var(--transition);
-  font-size: 14px;
+.card-title {
   font-weight: bold;
+  font-size: 13px;
+  color: #555;
 }
 
-.close-btn:hover { background: var(--danger); color: white; border-color: var(--danger); }
+.card-content {
+  flex-grow: 1;
+  padding: 12px;
+  font-size: 14px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
 
-.card-content { flex: 1; font-size: 15px; line-height: 1.6; word-break: break-all; }
-
-.empty-hint { color: #aaa; font-style: italic; font-size: 13px; }
-
-/* Editor panel */
+/* 3. פאנל העריכה התחתון - נשאר קבוע למטה */
 .editor-panel {
-  background: white;
-  border-top: 1px solid #ddd;
-  padding: 15px 30px;
-  box-shadow: 0 -5px 15px rgba(0,0,0,0.05);
-  z-index: 5;
+  background: #fff;
+  border-top: 2px solid #ddd;
+  padding: 8px 15px;
+  box-shadow: 0 -4px 10px rgba(0,0,0,0.05);
+  z-index: 110;
 }
 
-/* 3. כפתורי העריכה - נקה, מחק, אנדו */
 .style-controls {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #eee;
   flex-wrap: wrap;
-  margin-bottom: 15px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-/* הגדרת כפתור העריכה - עכשיו מעוגל, אחיד ויפה */
-.action-btn {
-  padding: 8px 18px;
-  border: 1px solid #ddd;
-  border-radius: 20px; /* מעוגל כמו כפתור הלוגין */
-  background: white;
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--text-main);
-  cursor: pointer;
-  transition: var(--transition);
-  box-shadow: var(--btn-shadow);
-}
-
-.action-btn:hover { 
-  background: var(--bg-light); 
-  border-color: var(--primary); 
-  color: var(--primary);
-}
-
-/* כפתורי מחיקה אדומים מעוגלים */
-.action-btn.danger {
-  color: var(--danger);
-  border-color: #fab1a0;
-  background: #fff5f5;
-}
-
-.action-btn.danger:hover {
-  background: var(--danger);
-  color: white;
-  border-color: var(--danger);
-}
-
-/* שאר כפתורי העיצוב (נשארים כמו שהיו כי הם יפים) */
-.style-controls select, .style-controls input[type="color"] {
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  outline: none;
-  cursor: pointer;
 }
 
 .fmt-btn {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
   border: 1px solid #ddd;
-  border-radius: 8px;
   background: white;
   cursor: pointer;
   font-weight: bold;
@@ -218,99 +174,58 @@ body {
 .fmt-btn.active {
   background: var(--primary);
   color: white;
-  border-color: var(--primary);
 }
 
-/* Keyboard - מבנה מקצועי */
-.keyboard {
+/* 4. המקלדת - גובה קבוע וקומפקטי */
+.keyboard-container {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 5px;
   align-items: center;
-  max-width: 1000px;
-  margin: 0 auto;
+  background: #ebedef;
+  padding: 8px;
+  border-radius: 12px;
 }
-
-.keyboard-mesh { display: flex; flex-direction: column; gap: 8px; align-items: center; }
 
 .keyboard-row {
   display: flex;
-  gap: 6px;
-  justify-content: center;
-  width: 100%;
+  gap: 5px;
 }
 
 .key {
-  min-width: 45px;
-  height: 45px;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  min-width: 40px;
+  height: 36px; 
+  border-radius: 6px;
+  border: 1px solid #ccc;
   background: #fff;
-  font-size: 16px;
+  font-size: 14px;
   cursor: pointer;
-  transition: all 0.1s ease;
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow: 0 2px 0 #ddd;
 }
 
-.key:hover {
-  background: #f0f7ff;
-  border-color: var(--primary);
-}
+.function-key { min-width: 60px; height: 36px; background: #f0f2f5; font-weight: bold; }
+.enter-key { background: #5dade2 !important; color: white !important; min-width: 70px; height: 36px; }
+.space-key { flex-grow: 1; max-width: 400px; height: 36px; }
 
-.key:active {
-  transform: translateY(2px);
-  box-shadow: none;
-}
-
-/* EN / עב / סימנים / אנטר */
-.function-key {
-  min-width: 70px;
-  background: #f0f2f5;
-  font-weight: bold;
-  font-size: 14px;
-}
-
-.function-key:hover { background: #e2e6ea; color: var(--primary); }
-
-.enter-key { background: #5dade2 !important; color: white !important; min-width: 80px; }
-.enter-key:hover { background: #3498db !important; }
-
-/* מקש הרווח המרכזי */
-.space-key {
-  flex-grow: 1;
-  max-width: 450px;
-  background: #ffffff;
-}
-
-/* Login Screen - מסך פתיחה מעוצב */
+/* מסך כניסה */
 .login-screen {
-  height: 100vh;
   display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: center;
-  background: linear-gradient(135deg, var(--bg-dark) 0%, #34495e 100%);
-  color: white;
+  justify-content: center;
+  height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
 }
 
-.login-screen h2 { margin-bottom: 20px; font-size: 2rem; }
-
-.login-screen button {
-  padding: 15px 40px;
-  font-size: 18px;
+.action-btn {
+  padding: 10px 20px;
   background: var(--primary);
   color: white;
   border: none;
-  border-radius: 30px; /* הכפתור המעוגל שאת אוהבת */
+  border-radius: 8px;
   cursor: pointer;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-  transition: var(--transition);
-}
-
-.login-screen button:hover {
-  background: var(--primary-dark);
-  transform: scale(1.05);
+  font-weight: bold;
 }

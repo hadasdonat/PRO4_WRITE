@@ -1,32 +1,42 @@
-export default function Toolbar({ onNew, texts, activeId, setTexts, currentUser, onLogout }) {
+export default function Toolbar({ onNew, texts, activeId, setTexts, currentUser, onLogout, onRemove }) {
   
   function handleSave() {
     const text = texts.find(t => t.id === activeId)
     if (!text) return
-    const name = prompt('שם הקובץ לשמירה:', text.title)
-    if (!name) return
 
-    // שמירה עם מזהה משתמש בשם המפתח
-    const fileKey = `file_${currentUser}_${name}`
-    localStorage.setItem(fileKey, JSON.stringify({ ...text, owner: currentUser }))
-    alert(`הקובץ "${name}" נשמר עבור המשתמש ${currentUser}`)
+    let fileName = text.title;
+    if (!fileName) {
+      fileName = prompt('הכנס שם לשמירת הקובץ:');
+      if (!fileName) return;
+    }
+
+    const fileKey = `file_${currentUser}_${fileName}`
+    localStorage.setItem(fileKey, JSON.stringify({ ...text, title: fileName, owner: currentUser }))
+    
+    alert(`הקובץ "${fileName}" נשמר בהצלחה!`)
+    onRemove(activeId); 
   }
 
   function handleOpen() {
-    // סינון מפתחות שמתחילים בקידומת של המשתמש הנוכחי בלבד
     const userPrefix = `file_${currentUser}_`
     const keys = Object.keys(localStorage).filter(k => k.startsWith(userPrefix))
     
     if (keys.length === 0) {
-      alert('לא נמצאו קבצים עבור משתמש זה')
+      alert('לא נמצאו קבצים שמורים עבורך.')
       return
     }
 
     const names = keys.map(k => k.replace(userPrefix, ''))
-    const name = prompt('בחר קובץ לפתיחה:\n' + names.join('\n'))
-    if (!name) return
+    const fileName = prompt('בחר קובץ לפתיחה:\n' + names.join('\n'))
+    if (!fileName) return
 
-    const raw = localStorage.getItem(userPrefix + name)
+    const isAlreadyOpen = texts.find(t => t.title === fileName);
+    if (isAlreadyOpen) {
+      alert('הקובץ כבר פתוח בתצוגה.');
+      return;
+    }
+
+    const raw = localStorage.getItem(userPrefix + fileName)
     if (raw) {
       const loaded = JSON.parse(raw)
       setTexts(prev => [...prev, loaded])
@@ -35,13 +45,12 @@ export default function Toolbar({ onNew, texts, activeId, setTexts, currentUser,
 
   return (
     <div className="toolbar">
-      <span className="app-title">✏️ עורך טקסטים</span>
-      <div className="toolbar-actions">
-        <button onClick={onNew}>+ חדש</button>
-        <button onClick={handleSave}>💾 שמור</button>
-        <button onClick={handleOpen}>📂 פתח</button>
-        <button onClick={onLogout} className="danger">יציאה</button>
-      </div>
+      <button className="tool-btn" onClick={onNew}>+ חדש</button>
+      <button className="tool-btn" onClick={handleSave}>שמור</button>
+      <button className="tool-btn" onClick={handleOpen}>פתח</button>
+      
+      {/* הכפתור הזה יידחף שמאלה אוטומטית בגלל ה-margin-right: auto ב-CSS */}
+      <button className="tool-btn logout-btn" onClick={onLogout}>יציאה</button>
     </div>
   )
 }
