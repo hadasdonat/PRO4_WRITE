@@ -58,16 +58,15 @@ export default function App() {
     }
   }, [texts]);
 
-  /* --- פונקציות ניהול משתמש וסשן --- */
-
-  const handleLogin = () => {
-    const name = prompt('הכנס שם משתמש:');
-    if (name) {
-      setCurrentUser(name);
-      localStorage.setItem('logged_user', name);
-      window.location.reload(); // איתחול האפליקציה לצורך טעינת קבצי המשתמש החדש
-    }
+  function handleLogin() {
+  const name = prompt('הכנס שם משתמש:');
+  if (name) {
+    const password = prompt('הכנס סיסמה:');
+    localStorage.setItem('logged_user', name);
+    localStorage.setItem(`pwd_${name}`, password); // שמירת סיסמה בסיסית
+    window.location.reload(); 
   }
+}
 
   const handleLogout = () => {
     localStorage.removeItem('logged_user');
@@ -79,7 +78,7 @@ export default function App() {
 
   /**
    * שמירת "צילום מצב" (Snapshot) של המערכת לפני ביצוע שינויים.
-   * משתמש בשיבוט עמוק (Deep Copy) כדי למנוע שינויים רפרנציאליים לא רצויים ב-State.
+   * משתמש בהעתקה עמוק (Deep Copy) כדי למנוע שינויים רפרנציאליים לא רצויים ב-State.
    */
   const saveToHistory = () => {
     setHistory(prev => [...prev, JSON.parse(JSON.stringify(texts))].slice(-20))
@@ -90,6 +89,27 @@ export default function App() {
     const prevState = history[history.length - 1]
     setTexts(prevState)
     setHistory(prev => prev.slice(0, -1))
+  }
+
+  // פונקציית חיפוש והחלפה
+  function findAndReplace() {
+    const find = prompt("איזה תו תרצי לחפש?");
+    if (!find) return; // אם המשתמש לחץ ביטול
+    
+    const replace = prompt(`באיזה תו להחליף את '${find}'?`);
+    if (replace === null) return; // אם המשתמש לחץ ביטול (אבל מחרוזת ריקה זה תקין)
+
+    if (!activeId) return;
+
+    saveToHistory();
+    setTexts(prev => prev.map(t => 
+      t.id !== activeId ? t : {
+        ...t,
+        content: t.content.map(item => 
+          item.char === find ? { ...item, char: replace } : item
+        )
+      }
+    ));
   }
 
   /**
@@ -228,6 +248,7 @@ export default function App() {
         onClear={clearText} 
         onApplyToAll={applyStyleToAll}
         onUndo={undo}
+        onFindReplace={findAndReplace}
       />
     </div>
   )

@@ -6,7 +6,7 @@ import KeyboardPanel from './KeyboardPanel'
  * קומפוננטת EditorPanel מרכזת את כל כלי העריכה וההקלדה של המערכת.
  * תפקידה העיקרי הוא לנהל את מצב העיצוב הנוכחי (Style) ולתווך בין בחירות המשתמש לבין הוספת התוכן.
  */
-export default function EditorPanel({ onAddChar, onDelete, onDeleteWord, onClear, onApplyToAll, onUndo }) {
+export default function EditorPanel({ onAddChar, onDelete, onDeleteWord, onClear, onApplyToAll, onUndo, onFindReplace }) {
   
   // ניהול המצב המקומי של העיצוב הנבחר (פונט, גודל, צבע וכו')
   // המידע הזה מוצמד לכל תו שייכתב מרגע הבחירה ואילך
@@ -37,8 +37,9 @@ export default function EditorPanel({ onAddChar, onDelete, onDeleteWord, onClear
         onDelete={onDelete} 
         onDeleteWord={onDeleteWord}
         onClear={onClear} 
-        onApplyToAll={() => onApplyToAll(style)} // הפעלת עיצוב גורף על כל המסמך
+        onApplyToAll={() => onApplyToAll(style)}
         onUndo={onUndo}
+        onFindReplace={onFindReplace}
       />
 
       {/* המקלדת הוויזואלית האחראית על הפקת התווים */}
