@@ -1,4 +1,3 @@
-/* App.css - גרסה סופית, יציבה ומותאמת להגנה */
 
 :root {
   --primary: #4a90e2;
@@ -76,9 +75,8 @@ body {
 }
 
 /* 2. אזור התצוגה והודעת "אין קבצים" */
-/* הוספת flex-grow מבטיחה שהאזור תמיד ידחוף את המקלדת למטה */
 .display-area, .empty-state {
-  flex-grow: 1; 
+  flex-grow: 1; /* דוחף את שאר האלמנטים למטה */
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -88,7 +86,6 @@ body {
   overflow-y: auto;
 }
 
-/* במידה ויש קבצים, הם יסתדרו בשורות */
 .display-area {
   flex-direction: row;
   flex-wrap: wrap;
@@ -144,6 +141,8 @@ body {
 
 /* 3. פאנל העריכה התחתון - נשאר קבוע למטה */
 .editor-panel {
+  margin-top: auto; /* מצמיד את המקלדת תמיד לתחתית */
+  flex-shrink: 0; /* מונע מהמקלדת להתכווץ */
   background: #fff;
   border-top: 2px solid #ddd;
   padding: 8px 15px;
@@ -210,16 +209,7 @@ body {
 .enter-key { background: #5dade2 !important; color: white !important; min-width: 70px; height: 36px; }
 .space-key { flex-grow: 1; max-width: 400px; height: 36px; }
 
-/* מסך כניסה */
-.login-screen {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-}
-
+/* 5. מסך כניסה וכפתורים */
 .action-btn {
   padding: 10px 20px;
   background: var(--primary);
@@ -229,6 +219,7 @@ body {
   cursor: pointer;
   font-weight: bold;
 }
+
 .login-container {
   height: 100vh;
   display: flex;
@@ -250,14 +241,18 @@ body {
 .login-card h1 { margin-bottom: 10px; color: #333; }
 .login-card p { color: #777; margin-bottom: 30px; font-size: 14px; }
 
-.input-group { text-align: left; margin-bottom: 20px; }
+.input-group { 
+  text-align: right; /* תוקן כדי להתאים לממשק בעברית */
+  margin-bottom: 20px; 
+}
+
 .input-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
 .input-group input {
   width: 100%;
   padding: 12px;
   border: 1px solid #ddd;
   border-radius: 8px;
-  box-sizing: border-box; /* חשוב מאוד למנוע חריגה מהרוחב */
+  box-sizing: border-box; 
 }
 
 .login-btn {
