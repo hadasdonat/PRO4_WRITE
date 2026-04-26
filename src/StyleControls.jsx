@@ -1,11 +1,13 @@
 import { useState } from 'react'
 
-const FONTS = ['Arial', 'Georgia', 'Courier New', 'Tahoma', 'Verdana', 'Times New Roman']
+// הגדרת קבועים מחוץ לקומפוננטה מונעת יצירה מחדש של המערכים בכל רינדור (Render) של המסך
+const FONTS = ['Arial', 'Georgia', 'Courier难 New', 'Tahoma', 'Verdana', 'Times New Roman']
 const SIZES = ['10', '12', '14', '16', '18', '24', '32', '48']
 
 /**
- * קומפוננטת StyleControls אחראית על ממשק העריכה הוויזואלי.
- * הוספנו לה את הפרופ onFindReplace כדי שתוכל להפעיל את פונקציית החיפוש.
+ * קומפוננטת StyleControls מנהלת את ממשק העיצוב והפעולות של העורך.
+ * היא מקבלת את מצב העיצוב הנוכחי (style) ואוסף של פונקציות Callback מה-App,
+ * ומקשרת אותם לכפתורים ולפקדים הוויזואליים שעל המסך.
  */
 export default function StyleControls({ 
   style, 
@@ -15,33 +17,47 @@ export default function StyleControls({
   onClear, 
   onApplyToAll, 
   onUndo,
-  onFindReplace // <-- הוספנו את הקשר לפונקציית החיפוש
+  onFindReplace // הפעלת מצב החיפוש ב-App
 }) {
   
+  /**
+   * פונקציית עזר לעדכון ערך בודד באובייקט העיצוב.
+   * משתמשת בתחביר פירוק (Spread Operator) כדי לשמור על שאר התכונות הקיימות
+   * ודורסת רק את המפתח (key) הספציפי שקיבלה עם הערך החדש (value).
+   */
   function update(key, value) {
     onChange(prev => ({ ...prev, [key]: value }))
   }
 
+  /**
+   * פונקציית עזר למיתוג (Toggle) של תכונות בעלות שני מצבים (כמו מודגש או נטוי).
+   * בודקת אם הערך הנוכחי שווה לערך ה"פעיל" - אם כן מכבה אותו, אחרת מדליקה.
+   */
   function toggle(key, onVal, offVal) {
     onChange(prev => ({ ...prev, [key]: prev[key] === onVal ? offVal : onVal }))
   }
 
   return (
     <div className="style-controls">
-      {/* בחירת גופן */}
+      
+      {/* --- אזור בחירת תכונות טקסט --- */}
+      
+      {/* בחירת גופן: רינדור דינמי של רשימת האופציות מתוך מערך הקבועים */}
       <select value={style.fontFamily} onChange={e => update('fontFamily', e.target.value)}>
         {FONTS.map(f => <option key={f}>{f}</option>)}
       </select>
 
-      {/* בחירת גודל טקסט */}
+      {/* בחירת גודל טקסט: המרה ל-Int לצורך תצוגה נקייה, והוספת 'px' בשמירה ל-State */}
       <select value={parseInt(style.fontSize)} onChange={e => update('fontSize', e.target.value + 'px')}>
         {SIZES.map(s => <option key={s}>{s}</option>)}
       </select>
 
-      {/* בחירת צבע */}
+      {/* בחירת צבע: שימוש בפקד הצבע המובנה של הדפדפן (HTML5 Color Picker) */}
       <input type="color" value={style.color} onChange={e => update('color', e.target.value)} />
 
-      {/* כפתורי עיצוב טקסט (B, I) */}
+      {/* --- אזור כפתורי מיתוג (Toggle) --- */}
+      
+      {/* כפתור מודגש: הוספת מחלקה 'active' באופן דינמי אם התכונה מופעלת כדי לתת חיווי למשתמש */}
       <button 
         className={`fmt-btn ${style.fontWeight === 'bold' ? 'active' : ''}`} 
         onClick={() => toggle('fontWeight', 'bold', 'normal')}
@@ -58,10 +74,10 @@ export default function StyleControls({
       
       <div className="sep"></div>
 
-      {/* פקודות עריכה מתקדמות */}
+      {/* --- אזור פעולות מתקדמות ומחיקה --- */}
+      
       <button className="action-btn" onClick={onUndo} title="ביטול פעולה אחרונה">Undo</button>
       
-      {/* כפתור חיפוש והחלפה החדש */}
       <button className="action-btn" onClick={onFindReplace} title="חיפוש והחלפה בתוך המסמך">🔍</button>
       
       <button className="action-btn" onClick={onApplyToAll} title="החל עיצוב על כל הטקסט">הכל</button>
@@ -71,6 +87,7 @@ export default function StyleControls({
       <button className="action-btn" onClick={onDelete}>מחק</button>
       <button className="action-btn" onClick={onDeleteWord}>מחק מילה</button>
       
+      {/* כפתור מחיקה כללית עם מחלקת עיצוב ייעודית (danger) להתראה אדומה */}
       <button className="action-btn danger" onClick={onClear}>נקה הכל</button>
     </div>
   )

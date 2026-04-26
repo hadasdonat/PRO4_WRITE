@@ -1,9 +1,9 @@
 import { useState } from 'react'
 
 /**
- * אובייקט הגדרות הפריסה (Layouts) של המקלדת.
- * המבנה בנוי כמערך של שורות, כאשר כל שורה היא מערך של תווים, 
- * מה שמאפשר רינדור דינמי וגמיש של המקלדת.
+ * אובייקט הקבועים המגדיר את פריסות המקשים (Layouts).
+ * השימוש במבנה של מערכים מקוננים מאפשר גישה מבוססת נתונים (Data-driven design),
+ * מה שמקל על הוספת שפות או שינוי סדר המקשים ללא שינוי הלוגיקה של הרינדור.
  */
 const LAYOUTS = {
   he: [
@@ -27,28 +27,29 @@ const LAYOUTS = {
 }
 
 export default function KeyboardPanel({ onKey }) {
-  // ניהול מצב מקומי עבור השפה הפעילה ותצוגת הסימנים
+  // ניהול מצב מקומי לשפה (עברית/אנגלית) ולמצב תצוגת סימנים
   const [currentLang, setCurrentLang] = useState('he');
   const [showSymbols, setShowSymbols] = useState(false);
 
-  // קביעת הפריסה להצגה על פי בחירת המשתמש
+  // קביעה דינמית של הפריסה הפעילה על פי שילוב המצבים הנוכחי
   const activeLayout = showSymbols ? 'symbols' : currentLang;
 
   return (
     <div className="keyboard-container">
       <div className="keyboard-mesh">
-        {/* מיפוי ורינדור של שורות המקלדת מתוך אובייקט הנתונים */}
+        
+        {/* רינדור דינמי של המקלדת באמצעות מיפוי כפול (Nested Mapping) על המערכים */}
         {LAYOUTS[activeLayout].map((row, rowIndex) => (
           <div key={rowIndex} className={`keyboard-row row-${rowIndex}`}>
             
-            {/* מיקום ייעודי למקש ה-Enter בתחילת השורה הרביעית לשיפור ה-UX */}
+            {/* הוספת מקש ה-Enter באופן מותנה בשורה האחרונה של האותיות */}
             {rowIndex === 3 && (
               <button className="key enter-key" onClick={() => onKey('\n')}>
                 Enter
               </button>
             )}
 
-            {/* רינדור המקשים של השורה הנוכחית */}
+            {/* מעבר על כל תו במערך השורה ויצירת כפתור תואם */}
             {row.map((key, keyIndex) => (
               <button 
                 key={`${activeLayout}-${rowIndex}-${keyIndex}`} 
@@ -61,9 +62,10 @@ export default function KeyboardPanel({ onKey }) {
           </div>
         ))}
         
-        {/* שורת הפעולות התחתונה (פונקציות מערכת) */}
+        {/* שורת פונקציות תחתונה לניהול הגדרות המקלדת בזמן אמת */}
         <div className="keyboard-row bottom-row">
-          {/* כפתור החלפת שפה (מוסתר כאשר מוצגים סימנים) */}
+          
+          {/* כפתור החלפת שפה: פעיל רק כאשר לא נמצאים במצב סימנים */}
           <button 
             className="key function-key" 
             onClick={() => !showSymbols && setCurrentLang(prev => prev === 'he' ? 'en' : 'he')}
@@ -72,10 +74,10 @@ export default function KeyboardPanel({ onKey }) {
             {currentLang === 'he' ? 'EN' : 'עב'}
           </button>
 
-          {/* מקש רווח מרכזי */}
+          {/* מקש רווח השולח תו ריק לפונקציית העדכון ב-App */}
           <button className="key space-key" onClick={() => onKey(' ')}>רווח</button>
 
-          {/* מעבר בין פריסת אותיות לפריסת סימנים ומספרים */}
+          {/* כפתור Toggle למעבר בין מצב תווים אלפא-נומריים לסימנים מיוחדים */}
           <button className="key function-key" onClick={() => setShowSymbols(!showSymbols)}>
             {showSymbols ? 'ABC' : '.?123'}
           </button>
