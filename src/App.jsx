@@ -3,253 +3,168 @@ import TextDisplayArea from './TextDisplayArea'
 import EditorPanel from './EditorPanel'
 import Toolbar from './Toolbar'
 
-/**
- * פונקציית עזר לייצור אובייקט מסמך ראשוני.
- * המסמך נוצר ללא כותרת (title ריק) כדי לאפשר למשתמש להגדיר שם ייחודי רק בעת השמירה הראשונה ל-LocalStorage.
- */
 function createText(id) {
-  return { id, title: '', content: [] }
+  return { 
+    id, title: '', content: [], 
+    lastStyle: { fontFamily: 'Arial', fontSize: '16px', color: '#000000', fontWeight: 'normal' } 
+  }
+}
+
+/* --- LoginScreen המעוצב --- */
+function LoginScreen({ onLogin }) {
+  const [user, setUser] = useState('');
+  const [pwd, setPwd] = useState('');
+  return (
+    <div className="login-container">
+      <div className="login-card">
+        <h1 style={{color: '#4a90e2'}}>TextEditor Pro</h1>
+        <p>נא להזין פרטים כדי להתחיל לעבוד</p>
+        <div className="input-group">
+          <label>שם משתמש</label>
+          <input type="text" value={user} onChange={(e) => setUser(e.target.value)} placeholder="שם משתמש..." />
+        </div>
+        <div className="input-group">
+          <label>סיסמה</label>
+          <input type="password" value={pwd} onChange={(e) => setPwd(e.target.value)} placeholder="סיסמה..." />
+        </div>
+        <button className="login-btn" onClick={() => onLogin(user, pwd)}>התחברות</button>
+      </div>
+    </div>
+  );
 }
 
 export default function App() {
-  /* --- ניהול מצב (State) ונתונים --- */
-
-  // החזקת זהות המשתמש המחובר לצורך סנכרון וטעינת קבצים אישיים מהדפדפן
-  const [currentUser, setCurrentUser] = useState(localStorage.getItem('logged_user') || '')
-
-  /**
-   * שליפת מסמכים מה-Persistence Layer (LocalStorage).
-   * הפונקציה מבצעת סינון (Filter) של כל המפתחות בדפדפן לפי תחילית (Prefix) הייחודית למשתמש המחובר.
-   */
-  const getAllUserFiles = () => {
-    if (!currentUser) return [];
-    const prefix = `file_${currentUser}_`;
-    const keys = Object.keys(localStorage).filter(k => k.startsWith(prefix));
-    
-    if (keys.length > 0) {
-      return keys.map(k => JSON.parse(localStorage.getItem(k)));
-    }
-    return [];
-  };
-
-  // מערך הנתונים הראשי המכיל את כל המסמכים הפתוחים כרגע בזיכרון האפליקציה
-  const [texts, setTexts] = useState(getAllUserFiles());
-  
-  // ניהול המזהה (ID) של המסמך הנמצא כרגע במוקד העריכה
-  const [activeId, setActiveId] = useState(texts.length > 0 ? texts[0].id : null);
-  
-  // ניהול רציפות מזהים ייחודיים למניעת כפילויות בעת יצירת מסמכים חדשים
-  const [nextId, setNextId] = useState(() => {
-    if (texts.length === 0) return 1;
-    return Math.max(...texts.map(t => t.id)) + 1;
-  });
-  
-  // מחסנית (Stack) לניהול היסטוריית מצבים לצורך מימוש פונקציונליות Undo עד 20 צעדים אחורה
+  const [currentUser, setCurrentUser] = useState(localStorage.getItem('logged_user') || '');
+  const [texts, setTexts] = useState([]);
+  const [activeId, setActiveId] = useState(null);
+  const [nextId, setNextId] = useState(1);
   const [history, setHistory] = useState([]);
+  const [currentStyle, setCurrentStyle] = useState({ fontFamily: 'Arial', fontSize: '16px', color: '#000000' });
+  
+  const [searchQuery, setSearchQuery] = useState('');
+  const [replaceQuery, setReplaceQuery] = useState('');
+  const [matchIndex, setMatchIndex] = useState(-1);
+  const [showSearch, setShowSearch] = useState(false);
 
-  /**
-   * Side Effect לסנכרון מזהה ה-ID הבא בכל שינוי במערך המסמכים.
-   * מבטיח תקינות לוגית של ה-Key-Property ברשימות.
-   */
   useEffect(() => {
-    if (texts.length > 0) {
-      const maxId = Math.max(...texts.map(t => t.id));
-      setNextId(maxId + 1);
+    if (currentUser) {
+      const prefix = `file_${currentUser}_`;
+      const keys = Object.keys(localStorage).filter(k => k.startsWith(prefix));
+      const files = keys.map(k => JSON.parse(localStorage.getItem(k)));
+      setTexts(files);
+      if (files.length > 0) setActiveId(files[0].id);
     }
-  }, [texts]);
+  }, [currentUser]);
 
-  function handleLogin() {
-  const name = prompt('הכנס שם משתמש:');
-  if (name) {
-    const password = prompt('הכנס סיסמה:');
-    localStorage.setItem('logged_user', name);
-    localStorage.setItem(`pwd_${name}`, password); // שמירת סיסמה בסיסית
-    window.location.reload(); 
-  }
-}
+  useEffect(() => {
+    const activeText = (texts || []).find(t => t.id === activeId);
+    if (activeText?.lastStyle) setCurrentStyle(activeText.lastStyle);
+    setMatchIndex(-1);
+  }, [activeId]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('logged_user');
-    setCurrentUser('');
-    window.location.reload();
-  }
+  /* --- לוגיקת החיפוש (Find Next) --- */
+  function findNext() {
+    if (!activeId || !searchQuery) return;
+    const activeText = texts.find(t => t.id === activeId);
+    if (!activeText || !activeText.content) return;
 
-  /* --- לוגיקת עריכה וניהול תוכן (Business Logic) --- */
+    const content = activeText.content;
+    let found = -1;
 
-  /**
-   * שמירת "צילום מצב" (Snapshot) של המערכת לפני ביצוע שינויים.
-   * משתמש בהעתקה עמוק (Deep Copy) כדי למנוע שינויים רפרנציאליים לא רצויים ב-State.
-   */
-  const saveToHistory = () => {
-    setHistory(prev => [...prev, JSON.parse(JSON.stringify(texts))].slice(-20))
-  }
+    // חיפוש מהמיקום הבא והלאה
+    for (let i = matchIndex + 1; i < content.length; i++) {
+      if (content[i].char === searchQuery) { found = i; break; }
+    }
 
-  const undo = () => {
-    if (history.length === 0) return
-    const prevState = history[history.length - 1]
-    setTexts(prevState)
-    setHistory(prev => prev.slice(0, -1))
+    // חיפוש מעגלי מההתחלה
+    if (found === -1) {
+      for (let i = 0; i <= matchIndex; i++) {
+        if (content[i].char === searchQuery) { found = i; break; }
+      }
+    }
+
+    if (found !== -1) setMatchIndex(found);
+    else alert("התו לא נמצא!");
   }
 
-  // פונקציית חיפוש והחלפה
-  function findAndReplace() {
-    const find = prompt("איזה תו תרצי לחפש?");
-    if (!find) return; // אם המשתמש לחץ ביטול
-    
-    const replace = prompt(`באיזה תו להחליף את '${find}'?`);
-    if (replace === null) return; // אם המשתמש לחץ ביטול (אבל מחרוזת ריקה זה תקין)
-
-    if (!activeId) return;
+  /* --- החלפה בודדת (Fixed) --- */
+  function replaceCurrent() {
+    // בדיקה שיש לנו אינדקס תקין מהחיפוש
+    if (matchIndex === -1 || !activeId) return;
 
     saveToHistory();
-    setTexts(prev => prev.map(t => 
-      t.id !== activeId ? t : {
-        ...t,
-        content: t.content.map(item => 
-          item.char === find ? { ...item, char: replace } : item
-        )
-      }
-    ));
+    const targetIndex = matchIndex; // קיבוע האינדקס הנוכחי
+
+    setTexts(prevTexts => prevTexts.map(t => {
+      if (t.id !== activeId) return t;
+
+      // שימוש ב-map כדי להבטיח עדכון עמוק ותקין של המערך
+      const updatedContent = t.content.map((item, idx) => 
+        idx === targetIndex ? { ...item, char: replaceQuery } : item
+      );
+
+      return { ...t, content: updatedContent };
+    }));
+
+    // איפוס הסימון הצהוב אחרי ההחלפה (כי התו השתנה)
+    setMatchIndex(-1);
   }
 
-  /**
-   * הוספת מסמך חדש למערכת.
-   * מימוש עקרון ה-Immutability ע"י יצירת מערך חדש (Spread Operator) ללא מוטציה של המקור.
-   */
-  function addText() {
-    saveToHistory()
-    const newT = createText(nextId)
-    setTexts(prev => [...prev, newT])
-    setActiveId(nextId)
-    setNextId(n => n + 1)
+  /* --- החלפה של הכל (כמו שעובד לך) --- */
+  function replaceAll() {
+    if (!activeId || !searchQuery) return;
+    saveToHistory();
+
+    setTexts(prevTexts => prevTexts.map(t => {
+      if (t.id !== activeId) return t;
+      const newContent = t.content.map(item => 
+        item.char === searchQuery ? { ...item, char: replaceQuery } : item
+      );
+      return { ...t, content: newContent };
+    }));
   }
 
-  /**
-   * הסרת מסמך מהתצוגה הפעילה וניהול אוטומטי של בחירת המסמך הפעיל הבא.
-   */
-  function removeText(id) {
-    saveToHistory()
-    const remaining = texts.filter(t => t.id !== id)
-    setTexts(remaining)
-    if (activeId === id && remaining.length > 0) {
-      setActiveId(remaining[0].id)
-    } else if (remaining.length === 0) {
-      setActiveId(null)
-    }
+  /* --- ניהול עריכה וקבצים --- */
+  function updateStyle(newStyle) {
+    const updated = typeof newStyle === 'function' ? newStyle(currentStyle) : newStyle;
+    setCurrentStyle(updated);
+    setTexts(prev => prev.map(t => t.id === activeId ? { ...t, lastStyle: updated } : t));
   }
 
-  /**
-   * הזרקת תו חדש למערך התוכן של המסמך הפעיל.
-   * הפונקציה מעדכנת את ה-State בצורה פונקציונלית ע"י שימוש ב-map לייצור עותק מעודכן.
-   */
-  function addChar(char, style) {
-    if (!activeId) return;
-    saveToHistory()
-    setTexts(prev => prev.map(t =>
-      t.id !== activeId ? t : {
-        ...t, content: [...t.content, { char, style }]
-      }
-    ))
-  }
+  const saveToHistory = () => setHistory(prev => [...prev, JSON.parse(JSON.stringify(texts))].slice(-20));
+  const handleLogin = (u, p) => { if(u && p) { localStorage.setItem('logged_user', u); setCurrentUser(u); } };
+  const handleLogout = () => { localStorage.removeItem('logged_user'); setCurrentUser(''); setTexts([]); setActiveId(null); };
 
-  // מחיקת התו האחרון מהמסמך הנבחר
-  function deleteChar() {
-    if (!activeId) return;
-    saveToHistory()
-    setTexts(prev => prev.map(t =>
-      t.id !== activeId ? t : {
-        ...t, content: t.content.slice(0, -1)
-      }
-    ))
-  }
-
-  // מחיקת המילה האחרונה ע"י חישוב אינדקס הרווח האחרון בתוכן
-  function deleteWord() {
-    if (!activeId) return;
-    saveToHistory()
-    setTexts(prev => prev.map(t => {
-      if (t.id !== activeId) return t
-      const lastSpace = [...t.content].reverse().findIndex(item => item.char === ' ')
-      const cutIndex = lastSpace === -1 ? 0 : t.content.length - 1 - lastSpace
-      return { ...t, content: t.content.slice(0, cutIndex) }
-    }))
-  }
-
-  // עדכון גורף של עיצוב (Style) לכל התווים הקיימים במסמך הפעיל
-  function applyStyleToAll(style) {
-    if (!activeId) return;
-    saveToHistory()
-    setTexts(prev => prev.map(t =>
-      t.id !== activeId ? t : {
-        ...t, content: t.content.map(item => ({ ...item, style }))
-      }
-    ))
-  }
-
-  // איפוס תוכן המסמך הפעיל ללא מחיקת המסמך עצמו
-  function clearText() {
-    if (!activeId) return;
-    saveToHistory()
-    setTexts(prev => prev.map(t =>
-      t.id !== activeId ? t : { ...t, content: [] }
-    ))
-  }
-
-  /* --- רינדור (Rendering) --- */
-
-  // הגנה: רינדור מותנה (Conditional Rendering) למניעת גישה ללא הזדהות
-  if (!currentUser) {
-    return (
-      <div className="login-screen">
-        <h2>ברוכים הבאים לעורך הטקסטים</h2>
-        <button className="action-btn" onClick={handleLogin}>התחברות / הרשמה</button>
-      </div>
-    )
-  }
+  if (!currentUser) return <LoginScreen onLogin={handleLogin} />;
 
   return (
     <div className="app">
-      {/* סרגל כלים עליון: מקבל פונקציות עדכון (Callbacks) כ-Props (Lifting State Up) */}
       <Toolbar 
-        onNew={addText} 
-        texts={texts} 
-        activeId={activeId} 
-        setTexts={setTexts} 
-        currentUser={currentUser} 
-        onLogout={handleLogout}
-        onRemove={removeText} 
+        onNew={() => { const n = createText(nextId); setTexts([...texts, n]); setActiveId(nextId); setNextId(nextId+1); }} 
+        texts={texts} activeId={activeId} setTexts={setTexts} currentUser={currentUser} 
+        onLogout={handleLogout} onRemove={(id) => setTexts(texts.filter(t => t.id !== id))} 
       />
-      
-      <div style={{padding: '5px', background: '#eee', fontSize: '12px', textAlign: 'center'}}>
-        משתמש מחובר: <b>{currentUser}</b>
+
+      <div className="status-bar" style={{padding: '5px 15px', background: '#f8f9fa', borderBottom: '1px solid #ddd', fontSize: '14px'}}>
+        משתמשת: <b>{currentUser}</b> | <span onClick={handleLogout} style={{color: 'red', cursor: 'pointer', textDecoration: 'underline'}}>התנתקות</span>
       </div>
 
-      {/* אזור התצוגה המרכזי: מטפל בהצגת כרטיסיות הטקסט או במצב ריק (Empty State) */}
-      {texts.length === 0 ? (
-        <div className="empty-state">
-          <h3>אין קבצים פתוחים כרגע</h3>
-          <p>לחצי על כפתור <b>"פתח"</b> למעלה כדי לפתוח קובץ קיים </p>
-          <p>לחצי על כפתור <b>"+ חדש"</b> למעלה כדי להתחיל לעבוד</p>
+      {showSearch && (
+        <div className="search-bar-inline" style={{padding: '10px', background: '#e9ecef', display: 'flex', gap: '8px', justifyContent: 'center'}}>
+          <input maxLength="1" placeholder="תו לחיפוש" value={searchQuery} onChange={e => {setSearchQuery(e.target.value); setMatchIndex(-1)}} />
+          <input maxLength="1" placeholder="תו להחלפה" value={replaceQuery} onChange={e => setReplaceQuery(e.target.value)} />
+          <button onClick={findNext}>מצא הבא 🔍</button>
+          <button onClick={replaceCurrent}>החלף בודד ✅</button>
+          <button onClick={replaceAll} style={{background: '#4CAF50', color: 'white'}}>החלף הכל ✨</button>
+          <button onClick={() => {setShowSearch(false); setMatchIndex(-1)}}>סגור</button>
         </div>
-      ) : (
-        <TextDisplayArea 
-          texts={texts} 
-          activeId={activeId} 
-          onSelect={setActiveId} 
-          onClose={removeText} 
-        />
       )}
 
-      {/* פאנל עריכה תחתון: מרכז את כלי העיצוב והמקלדת הוויזואלית */}
-      <EditorPanel 
-        onAddChar={addChar} 
-        onDelete={deleteChar} 
-        onDeleteWord={deleteWord}
-        onClear={clearText} 
-        onApplyToAll={applyStyleToAll}
-        onUndo={undo}
-        onFindReplace={findAndReplace}
-      />
+      {texts.length === 0 ? <div style={{textAlign: 'center', padding: '50px'}}><h3>אין קבצים פתוחים</h3></div> : (
+        <TextDisplayArea texts={texts} activeId={activeId} onSelect={setActiveId} onClose={(id) => setTexts(texts.filter(t=>t.id!==id))} highlightIndex={matchIndex} />
+      )}
+
+      <EditorPanel style={currentStyle} onChange={updateStyle} onAddChar={(char, style) => { saveToHistory(); setTexts(prev => prev.map(t => t.id === activeId ? {...t, content: [...t.content, {char, style}]} : t)); }} onDelete={() => { saveToHistory(); setTexts(prev => prev.map(t => t.id === activeId ? {...t, content: t.content.slice(0, -1)} : t)); }} onClear={() => { saveToHistory(); setTexts(prev => prev.map(t => t.id === activeId ? {...t, content: []} : t)); }} onApplyToAll={(s) => { saveToHistory(); setTexts(prev => prev.map(t => t.id === activeId ? {...t, content: t.content.map(c => ({...c, style: s}))} : t)); }} onUndo={() => { if(history.length > 0) { setTexts(history[history.length-1]); setHistory(prev => prev.slice(0,-1)); } }} onFindReplace={() => setShowSearch(true)} />
     </div>
-  )
+  );
 }
