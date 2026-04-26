@@ -6,6 +6,7 @@ export default function EditorPanel({
   onChange,       // מגיע מה-App
   onAddChar, 
   onDelete, 
+  onDeleteWord,   // <--- הנה התוספת הקריטית שהייתה חסרה!
   onClear, 
   onApplyToAll, 
   onUndo, 
@@ -23,6 +24,7 @@ export default function EditorPanel({
         style={style} 
         onChange={onChange} 
         onDelete={onDelete} 
+        onDeleteWord={onDeleteWord} // <--- מעבירים את הלוגיקה לכפתורים!
         onClear={onClear} 
         onApplyToAll={() => onApplyToAll(style)}
         onUndo={onUndo}
