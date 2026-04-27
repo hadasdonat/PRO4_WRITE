@@ -1,25 +1,23 @@
 import TextCard from './TextCard';
 
 /**
- * קומפוננטת אזור התצוגה (TextDisplayArea).
- * מתפקדת כ-"Container Component" שאחראי לרנדר את רשימת המסמכים ככרטיסיות.
- * מנהלת את הפריסה הוויזואלית הכוללת ומעבירה את ה-Props (Prop Drilling) לכל כרטיסייה.
+ * קומפוננטת מעטפת (Container) שאחראית להציג את כל הקבצים הפתוחים.
+ * היא לא מנהלת לוגיקה מורכבת בעצמה, אלא רק מקבלת נתונים מה-App 
+ * ומפזרת אותם לכרטיסיות (TextCard) המתאימות (Prop Drilling).
  */
 export default function TextDisplayArea({ 
-  // שימוש בערך ברירת מחדל (Default Parameter) של ES6 
-  // כדי להבטיח שתמיד יהיה מערך גם אם ה-App שולח undefined, מה שמונע שגיאת map מתסכלת.
-  texts = [], 
-  activeId, 
+  texts = [],     // ברירת מחדל: מערך ריק, כדי למנוע שגיאה אם ה-App שולח בטעות undefined
+  activeId,       // ה-ID של הקובץ שעורכים כרגע
   onSelect, 
   onClose, 
-  highlightIndex 
+  highlightIndex,
+  cursorIndex,
+  onSetCursor     // קבלת פונקציית עדכון הסמן מה-App
 }) {
   
-  /**
-   * תכנות מגננתי (Defensive Programming):
-   * בדיקת תקינות הקלט (Type Checking) לוודא ש-texts הוא אכן מערך חוקי.
-   * זה מגן על האפליקציה מקריסה מוחלטת ("מסך לבן") במקרה של שגיאת קריאה מה-LocalStorage.
-   */
+  // הגנה מקריסה (Defensive Programming):
+  // אם מסיבה כלשהי texts הוא לא מערך (למשל שגיאה בקריאה מה-LocalStorage), 
+  // נציג הודעת טעינה במקום שהאפליקציה תקרוס ("מסך לבן").
   if (!texts || !Array.isArray(texts)) {
     return <div className="text-display-area">טוען קבצים...</div>;
   }
@@ -27,30 +25,27 @@ export default function TextDisplayArea({
   return (
     <div className="text-display-area" style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', padding: '20px' }}>
       
-      {/* רינדור מותנה (Conditional Rendering): 
-          אם המערך ריק - נציג חיווי של מצב ריק (Empty State).
-          אחרת - נמפה את המערך ונרנדר קומפוננטת TextCard עבור כל אובייקט.
-      */}
+      {/* רינדור מותנה: אם אין קבצים נציג הודעה, אחרת נצייר את הכרטיסיות */}
       {texts.length === 0 ? (
         <div className="empty-state-hint">לא נמצאו קבצים פתוחים</div>
       ) : (
         texts.map((t) => (
           <TextCard
-            // הוספת מפתח (key) ייחודי היא חובה ב-React עבור רשימות דינמיות.
-            // זה מאפשר לאלגוריתם של React (Reconciliation) לזהות ביעילות אילו פריטים נוספו, שונו או נמחקו.
+            // מפתח ייחודי (key) הוא חובה ב-React כשמרנדרים רשימה עם map.
+            // זה עוזר ל-React לעדכן את המסך מהר יותר כשקובץ מתווסף או נמחק.
             key={t.id}
             
             text={t}
-            
-            // חישוב בוליאני: האם הכרטיסייה הזו היא הפעילה?
             isActive={t.id === activeId}
             
-            // עטיפת הפונקציות בפונקציית חץ (Closure) מבטיחה שנעביר למעלה את ה-ID הספציפי של הלחיצה
+            // אנחנו עוטפים את הפונקציות (Closure) כדי שכשילחצו עליהן בתוך TextCard,
+            // הן יפעלו מיד עם ה-ID הספציפי של הקובץ הזה.
             onSelect={() => onSelect(t.id)}
             onClose={() => onClose(t.id)}
             
-            // מעבירים את אינדקס החיפוש פנימה כדי שהכרטיסייה תדע מה לסמן בצהוב
             highlightIndex={highlightIndex}
+            cursorIndex={cursorIndex}
+            onSetCursor={onSetCursor} // מעבירים את הצינור הלאה אל ה-TextCard
           />
         ))
       )}
